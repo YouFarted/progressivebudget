@@ -15,7 +15,7 @@ app.use(express.json());
 
 app.use(express.static("public"));
 
-const mongoUri = process.env.MONGODB_URI | "mongodb://localhost/budget";
+const mongoUri = process.env.MONGODB_URI || "mongodb://localhost/budget";
 
 console.log("mongoUri:", mongoUri);
 
