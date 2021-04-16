@@ -11,9 +11,14 @@ let db;
 async function connectDatabase() {
   const localDb = idb.openDB('dbz', 1, {
     upgrade(db) {
-      db.createObjectStore('inflightTransactions');
-      //db.createObjectStore('store3', { keyPath: 'id' });
-      //db.createObjectStore('store4', { autoIncrement: true });
+      // Do I want a field of the transaction to be a key?
+      // I think not because the only remotely appropriate field would be the
+      // name and I don't like the idea of forcing uniqueness on that because
+      // this is a user-entered field used for their reference and they may
+      // not care for uniqueness semantics.  Why confuse them?  To them, it is 
+      // just a concise label to describe the transaction and do we really want
+      // to ding them for two seperate transactions named "vet bill"?
+      db.createObjectStore('inflightTransactions', { autoIncrement: true });
     },
   });
 
@@ -23,7 +28,7 @@ async function connectDatabase() {
 //connectDatabase.then()
 async function renderPageNoThrow() {
   try {
-    if(!db) {
+    if (!db) {
       db = await connectDatabase();
     }
     const response = await fetch("/api/transaction");
@@ -61,18 +66,15 @@ function checkForIndexedDb() {
 // kicks it off all async and is responsible for never throwing
 renderPageNoThrow();
 
-function saveRecord(transaction) {
+async function saveRecord(transaction) {
   // has name, value, date
   if (!window.indexedDB) {
     throw new Error("You're not getting offline transaction-buffering without indexedDB.  Sorry.");
   }
 
-  if(!db) {
+  if (!db) {
     throw new Error("I should have a successful db connection");
   }
-
-    
-
 }
 function populateTotal() {
   // reduce transaction amounts to a single total value
@@ -138,7 +140,7 @@ function populateChart() {
   });
 }
 
-function sendTransaction(isAdding) {
+async function sendTransaction(isAdding) {
   let nameEl = document.querySelector("#t-name");
   let amountEl = document.querySelector("#t-amount");
   let errorEl = document.querySelector(".form .error");
@@ -173,36 +175,37 @@ function sendTransaction(isAdding) {
   populateTotal();
 
   // also send to server
-  fetch("/api/transaction", {
-    method: "POST",
-    body: JSON.stringify(transaction),
-    headers: {
-      Accept: "application/json, text/plain, */*",
-      "Content-Type": "application/json"
-    }
-  })
-    .then(response => {
-      return response.json();
-    })
-    .then(data => {
-      if (data.errors) {
-        errorEl.textContent = "Missing Information";
-      }
-      else {
-        // clear form
-        nameEl.value = "";
-        amountEl.value = "";
+  try {
+    const response = await fetch("/api/transaction", {
+      method: "POST",
+      body: JSON.stringify(transaction),
+      headers: {
+        Accept: "application/json, text/plain, */*",
+        "Content-Type": "application/json"
       }
     })
-    .catch(err => {
-      // fetch failed, so save in indexed db
-      saveRecord(transaction);
 
+    const data = await response.json();
+
+    if (data.errors) {
+      errorEl.textContent = "Missing Information";
+    }
+    else {
       // clear form
       nameEl.value = "";
       amountEl.value = "";
-    });
+    }
+  }
+  catch (err) {
+    // fetch failed, so save in indexed db
+    await saveRecord(transaction);
+
+    // clear form
+    nameEl.value = "";
+    amountEl.value = "";
+  }
 }
+
 
 document.querySelector("#add-btn").onclick = function () {
   sendTransaction(true);
