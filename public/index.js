@@ -68,6 +68,7 @@ renderPageNoThrow();
 
 async function saveRecord(transaction) {
   // has name, value, date
+  console.log("save transaction:", transaction);
   if (!window.indexedDB) {
     throw new Error("You're not getting offline transaction-buffering without indexedDB.  Sorry.");
   }
@@ -75,6 +76,9 @@ async function saveRecord(transaction) {
   if (!db) {
     throw new Error("I should have a successful db connection");
   }
+
+  // no key.  The auto-increment is good.
+  await db.add("inflightTransactions", transaction);
 }
 function populateTotal() {
   // reduce transaction amounts to a single total value
@@ -197,7 +201,7 @@ async function sendTransaction(isAdding) {
     }
   }
   catch (err) {
-    // fetch failed, so save in indexed db
+    // fetch failed, so save in the indexed db
     await saveRecord(transaction);
 
     // clear form
