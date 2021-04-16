@@ -12,6 +12,7 @@ router.post("/api/transaction", ({body}, res) => {
 });
 
 router.post("/api/transaction/bulk", ({body}, res) => {
+  console.log("I got the post to transaction/bulk");
   Transaction.insertMany(body)
     .then(dbTransaction => {
       res.json(dbTransaction);

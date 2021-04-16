@@ -25,7 +25,6 @@ async function connectDatabase() {
   return localDb;
 }
 
-//connectDatabase.then()
 async function renderPageNoThrow() {
   try {
     if (!db) {
@@ -65,6 +64,32 @@ function checkForIndexedDb() {
 
 // kicks it off all async and is responsible for never throwing
 renderPageNoThrow();
+
+async function updateOnlineStatus() {
+  console.log("I'm back online!!!  Time to flood the server with pending inflight transactions!");
+
+  const all = await db.getAll('inflightTransactions');
+
+  console.log("all:", all);
+
+  try {
+
+    const response = await fetch("/api/transaction/bulk", {
+      method: "POST",
+      body: JSON.stringify(all),
+      headers: {
+        Accept: "application/json, text/plain, */*",
+        "Content-Type": "application/json"
+      }
+    });
+
+    // wipe the idb records so as to avoid double-committing any later
+    db.clear('inflightTransactions');
+
+  } catch (ex) {
+    console.error("my post to update the database upon connection failed", ex);
+  }
+}
 
 async function saveRecord(transaction) {
   // has name, value, date
@@ -218,3 +243,5 @@ document.querySelector("#add-btn").onclick = function () {
 document.querySelector("#sub-btn").onclick = function () {
   sendTransaction(false);
 };
+
+window.addEventListener('online', updateOnlineStatus);
